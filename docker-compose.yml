@@ -1,0 +1,12 @@
+version: '3'
+services:
+  terraform:
+    build: .
+    container_name: 'terraform'
+    entrypoint: ash
+    tty: true
+    
+    volumes:
+     - .:/terraform
+    working_dir: /terraform
+    env_file: .env
