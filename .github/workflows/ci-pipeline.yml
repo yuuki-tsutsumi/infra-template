@@ -1,94 +1,94 @@
-name: Continuous Integration Pipeline
-permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
+# name: Continuous Integration Pipeline
+# permissions:
+#   id-token: write
+#   contents: read
+#   pull-requests: write
 
-on:
-  pull_request:
+# on:
+#   pull_request:
 
-jobs:
-  terraform:
-    name: Terraform Validation
-    runs-on: ubuntu-latest
-    environment: ${{ github.event.pull_request.base.ref == 'main' && 'production' || 'staging' }}
-    env:
-      WORK_DIR: ./accounts/${{ github.event.pull_request.base.ref == 'main' && 'production' || 'staging' }}
-      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+# jobs:
+#   terraform:
+#     name: Terraform Validation
+#     runs-on: ubuntu-latest
+#     environment: ${{ github.event.pull_request.base.ref == 'main' && 'production' || 'staging' }}
+#     env:
+#       WORK_DIR: ./accounts/${{ github.event.pull_request.base.ref == 'main' && 'production' || 'staging' }}
+#       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+#       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+#       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+#       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
-    defaults:
-      run:
-        shell: bash
+#     defaults:
+#       run:
+#         shell: bash
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ap-northeast-1
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-region: ap-northeast-1
+#           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: 1.9.8
 
-      - name: Check Terraform Format
-        run: terraform fmt -recursive -check
+#       - name: Check Terraform Format
+#         run: terraform fmt -recursive -check
 
-      - name: Initialize Terraform
-        working-directory: ${{ env.WORK_DIR }}
-        run: terraform init
+#       - name: Initialize Terraform
+#         working-directory: ${{ env.WORK_DIR }}
+#         run: terraform init
 
-      - name: Validate Terraform
-        working-directory: ${{ env.WORK_DIR }}
-        run: terraform validate
+#       - name: Validate Terraform
+#         working-directory: ${{ env.WORK_DIR }}
+#         run: terraform validate
 
-      - name: Run TFLint
-        uses: reviewdog/action-tflint@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          tflint_init: "true"
-          tflint_config: "${{ github.workspace }}/.tflint.hcl"
-          level: "error"
-          fail_level: "error"
-          filter_mode: "added"
-          flags: "--recursive"
+#       - name: Run TFLint
+#         uses: reviewdog/action-tflint@v1
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           reporter: github-pr-review
+#           tflint_init: "true"
+#           tflint_config: "${{ github.workspace }}/.tflint.hcl"
+#           level: "error"
+#           fail_level: "error"
+#           filter_mode: "added"
+#           flags: "--recursive"
         
-      - name: Create Terraform Plan
-        working-directory: ${{ env.WORK_DIR }}
-        id: dev_plan
-        run: terraform plan -no-color
+#       - name: Create Terraform Plan
+#         working-directory: ${{ env.WORK_DIR }}
+#         id: dev_plan
+#         run: terraform plan -no-color
 
-      - name: Update Pull Request with Terraform Plan
-        uses: actions/github-script@v7
-        if: github.event_name == 'pull_request'
-        env:
-          Dev_PLAN: "terraform\n${{ steps.dev_plan.outputs.stdout }}"
-        with:
-          result-encoding: string
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const output = `#### Check! Terraform Show Plans 🖌\`
-            <details><summary>Dev Show Plan</summary>
+#       - name: Update Pull Request with Terraform Plan
+#         uses: actions/github-script@v7
+#         if: github.event_name == 'pull_request'
+#         env:
+#           Dev_PLAN: "terraform\n${{ steps.dev_plan.outputs.stdout }}"
+#         with:
+#           result-encoding: string
+#           github-token: ${{ secrets.GITHUB_TOKEN }}
+#           script: |
+#             const output = `#### Check! Terraform Show Plans 🖌\`
+#             <details><summary>Dev Show Plan</summary>
 
-            \`\`\`\n
-            ${process.env.Dev_PLAN}
-            \`\`\`
+#             \`\`\`\n
+#             ${process.env.Dev_PLAN}
+#             \`\`\`
 
-            </details>
+#             </details>
 
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+#             *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
-            github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: output
-            });
+#             github.rest.issues.createComment({
+#                 issue_number: context.issue.number,
+#                 owner: context.repo.owner,
+#                 repo: context.repo.repo,
+#                 body: output
+#             });
